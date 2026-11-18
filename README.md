@@ -20,6 +20,8 @@ Dữ liệu tự lưu trong trình duyệt của từng máy. Lưu hồ sơ dự
 ## Mã nguồn
 `app\js\engine.js` (động học, RTT, chọn thang) · `app\js\sim.js` (mô phỏng) · `app\js\app.js` (giao diện) · `app\js\charts.js` · `app\css\style.css`.
 
+Tài liệu kỹ thuật (thuật toán, đầu vào/đầu ra, giới hạn): xem thư mục [`docs/`](docs/README.md).
+
 ## Đã kiểm tra
 - RTT khớp công thức CIBSE cổ điển (1 sảnh, tầng đều): S, H, RTT trùng đến 10⁻¹².
 - Mô phỏng cao điểm lên khi quá tải cho HC5 thực ≈ HC5 tính (8,3% so với 8,25% trên ví dụ).
