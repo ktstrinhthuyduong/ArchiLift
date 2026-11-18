@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArchiLift – Giao thông thang máy</title>
+<link rel="stylesheet" href="css/style.css?v=20261118t">
+</head>
+<body>
+<header class="topbar noprint">
+  <div class="logo"><b>ArchiLift</b><span>Archivina · Tính toán giao thông thang máy</span></div>
+  <div id="projName" class="pname"></div>
+  <div id="shareBar" class="sharebar"></div>
+  <div class="btns edit-only">
+    <button data-act="new">Mới</button>
+    <button data-act="example">Ví dụ</button>
+    <button data-act="open">Mở .json</button>
+    <button class="pri" data-act="saveFile">Lưu .json</button>
+  </div>
+  <input type="file" id="fileIn" accept=".json,application/json" hidden>
+</header>
+<nav id="tabs" class="tabs noprint"></nav>
+<main id="main"></main>
+<footer class="foot noprint">ArchiLift v1.0 — công cụ nội bộ Archivina. Dữ liệu tự lưu trong trình duyệt của máy này; dùng "Lưu .json" để lưu hồ sơ dự án.</footer>
+<datalist id="dlLoads"></datalist>
+<datalist id="dlSpeeds"></datalist>
+<script src="js/engine.js?v=20261118t"></script>
+<script src="js/sim.js?v=20261118t"></script>
+<script src="js/charts.js?v=20261118t"></script>
+<script src="js/liftdata.js?v=20261118t"></script>
+<script src="js/lifts.js?v=20261118t"></script>
+<script src="js/liftdraw.js?v=20261118t"></script>
+<script src="js/app.js?v=20261118t"></script>
+</body>
+</html>

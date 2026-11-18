@@ -1,0 +1,42 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>PDF view</title>
+<style>body{margin:0;background:#fff}#info{font:12px Arial;padding:2px 6px}canvas{display:block}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head><body><div id="info">loading…</div><canvas id="c"></canvas>
+<script>
+// Công cụ nội bộ: hiển thị 1 trang PDF (có thể cắt vùng) để đọc bảng kích thước.
+// ?f=<đường dẫn tương đối>&p=<trang>&w=<bề rộng px>&x0=&y0=&x1=&y1= (tỉ lệ 0..1 vùng cắt)
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const q = new URLSearchParams(location.search);
+const f = q.get('f'), p = +(q.get('p') || 1), W = +(q.get('w') || 1600);
+const x0 = +(q.get('x0') || 0), y0 = +(q.get('y0') || 0), x1 = +(q.get('x1') || 1), y1 = +(q.get('y1') || 1);
+// ?pp=a-b: lưới ảnh thu nhỏ nhiều trang để tìm trang cần đọc
+if (q.get('pp')) {
+  const [a, b] = q.get('pp').split('-').map(Number);
+  pdfjsLib.getDocument(f).promise.then(async doc => {
+    const c = document.getElementById('c'); c.remove();
+    for (let i = a; i <= Math.min(b, doc.numPages); i++) {
+      const page = await doc.getPage(i), v1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: 380 / v1.width });
+      const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height;
+      cv.style.cssText = 'display:inline-block;margin:2px;border:1px solid #ccc';
+      const lab = document.createElement('div'); lab.style.cssText = 'display:inline-block;vertical-align:top;font:14px Arial;width:30px'; lab.textContent = i;
+      document.body.appendChild(lab); document.body.appendChild(cv);
+      await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    }
+    window.__done = true;
+  });
+} else
+pdfjsLib.getDocument(f).promise.then(async doc => {
+  const page = await doc.getPage(p);
+  const v1 = page.getViewport({ scale: 1 });
+  const scale = W / (v1.width * (x1 - x0));
+  const vp = page.getViewport({ scale });
+  const c = document.getElementById('c');
+  c.width = vp.width * (x1 - x0); c.height = vp.height * (y1 - y0);
+  const ctx = c.getContext('2d');
+  ctx.translate(-vp.width * x0, -vp.height * y0);
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  document.getElementById('info').textContent = f + ' — trang ' + p + '/' + doc.numPages + ' (' + Math.round(v1.width) + '×' + Math.round(v1.height) + 'pt)';
+  window.__done = true;
+}).catch(e => { document.getElementById('info').textContent = 'Lỗi: ' + e; window.__done = true; });
+</script></body></html>

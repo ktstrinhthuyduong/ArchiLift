@@ -1,0 +1,1 @@
+- [ArchiLift trạng thái](archilift-project-state.md) — đọc TIEP-THEO.md trước; sửa dữ liệu qua .json _vNN; tăng ?v= khi sửa JS/CSS

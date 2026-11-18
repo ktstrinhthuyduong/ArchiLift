@@ -1,0 +1,8 @@
+# catalog hãng: 139 MB, giữ trên máy
+Catalog hãng/
+# file khoá tạm của Word/Excel
+~$*
+*.tmp
+# chỉ đưa gói zip mới nhất lên GitHub
+ArchiLift_DongGoi_*.zip
+!ArchiLift_DongGoi_2026-11-18_v04.zip

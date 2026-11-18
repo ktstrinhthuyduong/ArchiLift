@@ -1,0 +1,451 @@
+{
+ "v": 1,
+ "project": {
+  "name": "Ví dụ – chung cư 30 tầng, 3 hầm (số liệu giả định)",
+  "code": "VD",
+  "author": "",
+  "note": "Số liệu ví dụ để làm quen phần mềm, không thuộc dự án nào."
+ },
+ "floors": [
+  {
+   "id": "3odx7rh",
+   "name": "B3",
+   "func": "Hầm",
+   "h": 3.3,
+   "pop": 0,
+   "ent": 10
+  },
+  {
+   "id": "xyvx8j4",
+   "name": "B2",
+   "func": "Hầm",
+   "h": 3.3,
+   "pop": 0,
+   "ent": 10
+  },
+  {
+   "id": "ce2e2td",
+   "name": "B1",
+   "func": "Hầm",
+   "h": 3.3,
+   "pop": 0,
+   "ent": 10
+  },
+  {
+   "id": "x42ez34",
+   "name": "T1",
+   "func": "Sảnh",
+   "h": 4.5,
+   "pop": 0,
+   "ent": 70
+  },
+  {
+   "id": "toixxv3",
+   "name": "T2",
+   "func": "Tiện ích",
+   "h": 3.2,
+   "pop": 0,
+   "ent": 0
+  },
+  {
+   "id": "g2xrp23",
+   "name": "T3",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "eaiwnuk",
+   "name": "T4",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "o4fqzs2",
+   "name": "T5",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "3ible8o",
+   "name": "T6",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "ass052t",
+   "name": "T7",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "fhdybtc",
+   "name": "T8",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "v19gdm6",
+   "name": "T9",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "amt939o",
+   "name": "T10",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "ng0ry7p",
+   "name": "T11",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "yvgsa6m",
+   "name": "T12",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "7t2yai2",
+   "name": "T13",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "ymqrwy6",
+   "name": "T14",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "fsr0he8",
+   "name": "T15",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "wr02km1",
+   "name": "T16",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "3emmdc8",
+   "name": "T17",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "3jnjjmk",
+   "name": "T18",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "68q5kww",
+   "name": "T19",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "tnwtesq",
+   "name": "T20",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "1u1q948",
+   "name": "T21",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "bi7m0lh",
+   "name": "T22",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "cestd19",
+   "name": "T23",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "tt1mwti",
+   "name": "T24",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "swglz9d",
+   "name": "T25",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "0etd7r4",
+   "name": "T26",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "oqw3qqr",
+   "name": "T27",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "i9lff86",
+   "name": "T28",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "al57n1p",
+   "name": "T29",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  },
+  {
+   "id": "skwt7cc",
+   "name": "T30",
+   "func": "Căn hộ",
+   "h": 3.2,
+   "pop": 40,
+   "ent": 0
+  }
+ ],
+ "datumId": "x42ez34",
+ "groups": [
+  {
+   "id": "xwojrs8",
+   "name": "P – Cư dân",
+   "L": 6,
+   "Q": 1000,
+   "v": 2.5,
+   "a": 1,
+   "j": 1.5,
+   "to": 2,
+   "tc": 3,
+   "tsd": 0.5,
+   "tp": 1.2,
+   "lf": 80,
+   "preset": "res",
+   "crit": {
+    "hc5": 7,
+    "int": 60,
+    "awt": 0
+   },
+   "demand": 7,
+   "cells": {
+    "3odx7rh": {
+     "s": true,
+     "sh": 0
+    },
+    "xyvx8j4": {
+     "s": true,
+     "sh": 0
+    },
+    "ce2e2td": {
+     "s": true,
+     "sh": 0
+    },
+    "x42ez34": {
+     "s": true,
+     "sh": 0
+    },
+    "toixxv3": {
+     "s": true,
+     "sh": 0
+    },
+    "g2xrp23": {
+     "s": true,
+     "sh": 100
+    },
+    "eaiwnuk": {
+     "s": true,
+     "sh": 100
+    },
+    "o4fqzs2": {
+     "s": true,
+     "sh": 100
+    },
+    "3ible8o": {
+     "s": true,
+     "sh": 100
+    },
+    "ass052t": {
+     "s": true,
+     "sh": 100
+    },
+    "fhdybtc": {
+     "s": true,
+     "sh": 100
+    },
+    "v19gdm6": {
+     "s": true,
+     "sh": 100
+    },
+    "amt939o": {
+     "s": true,
+     "sh": 100
+    },
+    "ng0ry7p": {
+     "s": true,
+     "sh": 100
+    },
+    "yvgsa6m": {
+     "s": true,
+     "sh": 100
+    },
+    "7t2yai2": {
+     "s": true,
+     "sh": 100
+    },
+    "ymqrwy6": {
+     "s": true,
+     "sh": 100
+    },
+    "fsr0he8": {
+     "s": true,
+     "sh": 100
+    },
+    "wr02km1": {
+     "s": true,
+     "sh": 100
+    },
+    "3emmdc8": {
+     "s": true,
+     "sh": 100
+    },
+    "3jnjjmk": {
+     "s": true,
+     "sh": 100
+    },
+    "68q5kww": {
+     "s": true,
+     "sh": 100
+    },
+    "tnwtesq": {
+     "s": true,
+     "sh": 100
+    },
+    "1u1q948": {
+     "s": true,
+     "sh": 100
+    },
+    "bi7m0lh": {
+     "s": true,
+     "sh": 100
+    },
+    "cestd19": {
+     "s": true,
+     "sh": 100
+    },
+    "tt1mwti": {
+     "s": true,
+     "sh": 100
+    },
+    "swglz9d": {
+     "s": true,
+     "sh": 100
+    },
+    "0etd7r4": {
+     "s": true,
+     "sh": 100
+    },
+    "oqw3qqr": {
+     "s": true,
+     "sh": 100
+    },
+    "i9lff86": {
+     "s": true,
+     "sh": 100
+    },
+    "al57n1p": {
+     "s": true,
+     "sh": 100
+    },
+    "skwt7cc": {
+     "s": true,
+     "sh": 100
+    }
+   }
+  }
+ ],
+ "sim": {
+  "profile": "up",
+  "rate": 7,
+  "inc": 100,
+  "out": 0,
+  "inter": 0,
+  "dur": 1800,
+  "warm": 300,
+  "runs": 5,
+  "seed": 1,
+  "groupId": "xwojrs8"
+ },
+ "sizing": {
+  "maxL": 12,
+  "loads": "450, 630, 800, 1000, 1050, 1150, 1275, 1350, 1600, 1800, 2000, 2500",
+  "speeds": "1, 1.5, 1.6, 1.75, 2, 2.5, 3, 3.5, 4, 5, 6, 7",
+  "groupId": "xwojrs8"
+ }
+}
