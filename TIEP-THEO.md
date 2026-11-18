@@ -4,6 +4,7 @@
 
 ### Trạng thái khi đóng gói (18/11/2026, chiều — gói _v04, code 20261118t)
 - Gói chuyển máy: **`ArchiLift_DongGoi_2026-11-18_v04.zip`** (toàn bộ thư mục, kể cả `_shared\`; trừ `Catalog hãng\` — chép riêng nếu cần đọc catalog; trừ các gói cũ `ArchiLift_DongGoi_*.zip`). Giải nén ra một thư mục bất kỳ, ví dụ `G:\@ AI\6. ArchiLift`.
+- GitHub (công khai): https://github.com/ktstrinhthuyduong/ArchiLift — nhánh `main`; sửa xong: `git add -A`, `git commit`, `git push`. Không đưa `Catalog hãng` và các gói zip cũ (xem `.gitignore`).
 - **Dữ liệu dự án mới nhất** (có ảnh mặt bằng + 2 nhãn; P – Cư dân 6 × 1000 kg, 2,5 m/s; CC – Chữa cháy 1 × 1350 kg, 2,5 m/s, B3 → Tum; tầng Tum):
   - chạy `ArchiLift_LAN.bat` → dự án chung nạp sẵn từ `_shared\ArchiLift_chung.json` (rev 20); bấm **Xin sửa** để sửa;
   - hoặc chạy `ArchiLift.bat` → **Mở .json** → `VD_ArchiLift_2026-11-18_v06.json` (cùng nội dung, xuất từ dự án chung).
