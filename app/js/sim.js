@@ -1,7 +1,8 @@
 /* ArchiLift – mô phỏng vận hành nhóm thang theo bước thời gian (0,1 s).
    Mỗi hành khách ảo có tầng đi, tầng đến, thời điểm gọi; cabin chạy theo điều khiển
    tập hợp hai chiều (directional collective), lệnh gọi tầng phân cho cabin có thời gian
-   đến dự kiến nhỏ nhất. Đơn giản hoá: cabin chỉ chọn điểm dừng kế tiếp khi khởi hành. */
+   đến dự kiến nhỏ nhất. cfg.midRoute (mặc định bật): cabin đang chạy được đổi điểm dừng
+   sang tầng có lệnh gọi cùng chiều nằm giữa đường nếu còn kịp hãm theo profile S. */
 (function (global) {
   'use strict';
   const AL = global.AL;
@@ -44,6 +45,20 @@
     const TF = [];
     for (let i = 0; i < n; i++) { TF.push([]); for (let k = 0; k < n; k++) TF[i].push(AL.flightTime(Math.abs(z[i] - z[k]), v, acc, jk)); }
     const tsEst = AL.flightTime(gi.df, v, acc, jk) - gi.df / v + to + tc + tsd;
+    // Thời điểm (tính từ lúc cabin bắt đầu chuyển động) mà chuyến quãng d bắt đầu khác chuyến dài hơn:
+    // trước thời điểm này cabin vẫn có thể dừng ở cách d mà không cần hãm gấp (cùng a, j, v).
+    const aEff = (acc * acc) / jk > v ? Math.sqrt(v * jk) : acc;
+    function devTime(d) {
+      if (!(d > 0)) return 0;
+      if (d >= (v * v) / aEff + (v * aEff) / jk) return d / v;                    // đạt v: lúc bắt đầu hãm
+      if (d >= (2 * aEff * aEff * aEff) / (jk * jk)) {                              // đạt a, không đạt v
+        const k = (aEff * aEff) / jk;
+        return (-k + Math.sqrt(k * k + 4 * aEff * d)) / 2 / aEff;                    // vp / a: lúc giảm gia tốc
+      }
+      return Math.cbrt(d / (2 * jk));                                               // không đạt a: T/4
+    }
+    const DEV = TF.map(function (row, i) { return row.map(function (_, k) { return devTime(Math.abs(z[i] - z[k])); }); });
+    const midRoute = cfg.midRoute !== false;
 
     const R = mulberry32(cfg.seed || 1);
     const warm = +cfg.warm || 0, dur = +cfg.dur || 1800, Tgen = warm + dur;
@@ -79,7 +94,7 @@
     const cars = [];
     for (let c = 0; c < L; c++) {
       const f0 = homing ? home : Math.round((c * (n - 1)) / Math.max(1, L - 1));
-      cars.push({ id: c, f: f0, st: 0, dir: 0, timer: 0, tgt: -1, load: [], calls: new Int32Array(n), stops: 0 });
+      cars.push({ id: c, f: f0, st: 0, dir: 0, timer: 0, tgt: -1, tTrip: 0, load: [], calls: new Int32Array(n), stops: 0, isStops: 0 });
     }
     const pending = [];
     const trace = cfg.trace || null; // mảng ghi sự kiện để kiểm tra (tuỳ chọn)
@@ -119,34 +134,45 @@
       if (c.dir < 0) { if (below || dnHere) return -1; if (upHere || above) return 1; return 0; }
       if (upHere) return 1; if (dnHere) return -1; if (above) return 1; if (below) return -1; return 0;
     }
-    function board(c) {
+    function board(c, reopen) {
       if (c.dir === 0) return 0;
       const q = c.dir > 0 ? qUp[c.f] : qDn[c.f], A = c.dir > 0 ? asgUp : asgDn;
       let k = 0;
       while (q.length && c.load.length < CC) {
         const p = q.shift();
-        p.tb = t; c.load.push(p); c.calls[p.d]++; k++;
+        p.tb = t; p.sb = c.isStops - (reopen ? 1 : 0); c.load.push(p); c.calls[p.d]++; k++;
       }
       A[c.f] = -1;
       if (q.length) pending.push([c.f, c.dir]);
       return k;
     }
-    function arrive(c) {
+    function arrive(c, reopen) {
       const f = c.f;
       let nOut = 0;
       if (c.calls[f] > 0) {
         const keep = [];
-        c.load.forEach(function (p) { if (p.d === f) { p.ta = t; nOut++; delivered++; } else keep.push(p); });
+        c.load.forEach(function (p) { if (p.d === f) { p.ta = t; p.is = c.isStops - p.sb; nOut++; delivered++; } else keep.push(p); });
         c.load = keep; c.calls[f] = 0;
       }
       c.dir = chooseDir(c);
-      const nIn = board(c);
+      const nIn = board(c, reopen);
       if (trace) trace.push(['arr', +t.toFixed(1), c.id, f, nOut, nIn, c.load.length, c.dir]);
       if (nOut + nIn === 0) { c.st = 0; return; }
       c.st = 2; c.stops++;
+      if (!reopen) c.isStops++;   // mở cửa lại tại cùng tầng không tính là một lần dừng mới
       c.timer = to + tc + tp * (nOut + nIn);
     }
+    // cabin đang chạy (st = 1) còn kịp dừng ở tầng k nằm giữa tầng xuất phát và tầng đích không
+    function canStopAt(c, k) {
+      if (!midRoute || c.st !== 1 || c.dir === 0) return false;
+      if ((k - c.f) * c.dir <= 0 || (c.tgt - k) * c.dir <= 0) return false;
+      const el = c.tTrip - c.timer;                // thời gian đã trôi kể cả trễ khởi hành
+      return Math.max(0, el - tsd) <= DEV[c.f][k];
+    }
     function estimate(c, f, d) {
+      if (d === c.dir && canStopAt(c, f)) {
+        return (TF[c.f][f] + tsd) - (c.tTrip - c.timer) + (c.load.length >= CC ? 60 : (c.load.length / CC) * 5);
+      }
       const pos = c.st === 1 ? c.tgt : c.f;
       let cost = c.st ? Math.max(0, c.timer) : 0;
       const dir = c.dir;
@@ -172,13 +198,19 @@
       let best = 0, bc = Infinity;
       cars.forEach(function (c) { const e = estimate(c, f, d); if (e < bc) { bc = e; best = c.id; } });
       A[f] = best;
+      const c = cars[best];
+      if (d === c.dir && c.load.length < CC && canStopAt(c, f)) {   // đổi điểm dừng kế tiếp sang tầng gọi
+        const el = c.tTrip - c.timer;
+        c.tgt = f; c.tTrip = TF[c.f][f] + tsd; c.timer = c.tTrip - el;
+        if (trace) trace.push(['mid', +t.toFixed(1), c.id, c.f, f, +c.timer.toFixed(1)]);
+      }
     }
     function newPax(p) {
       const d = p.d > p.o ? 1 : -1;
       for (let i = 0; i < L; i++) {
         const c = cars[i];
         if (c.st === 2 && c.f === p.o && c.dir === d && c.load.length < CC && c.timer > tc) {
-          p.tb = t; c.load.push(p); c.calls[p.d]++; c.timer += tp; return;
+          p.tb = t; p.sb = c.isStops - 1; c.load.push(p); c.calls[p.d]++; c.timer += tp; return;
         }
       }
       (d > 0 ? qUp : qDn)[p.o].push(p);
@@ -188,7 +220,7 @@
       const f = c.f;
       if (c.load.length < CC) {
         const d0 = chooseDir(c); // chỉ mở cửa lại nếu có khách tại tầng đúng chiều sẽ đi
-        if (d0 !== 0 && (d0 > 0 ? qUp[f] : qDn[f]).length) { arrive(c); return; }
+        if (d0 !== 0 && (d0 > 0 ? qUp[f] : qDn[f]).length) { arrive(c, true); return; }
       }
       let k = nextTarget(c);
       if (k < 0) {
@@ -197,7 +229,7 @@
         else { c.st = 0; return; }
       }
       c.dir = z[k] > z[f] ? 1 : -1;
-      c.tgt = k; c.st = 1; c.timer = TF[f][k] + tsd;
+      c.tgt = k; c.st = 1; c.timer = c.tTrip = TF[f][k] + tsd;
       if (trace) trace.push(['dep', +t.toFixed(1), c.id, f, k, +c.timer.toFixed(1)]);
     }
 
@@ -234,11 +266,17 @@
     const wt = meas.map(function (p) { return (p.tb >= 0 ? p.tb : tEnd) - p.t; }).sort(function (a, b) { return a - b; });
     const tt = done.map(function (p) { return p.ta - p.tb; });
     const jt = done.map(function (p) { return p.ta - p.t; }).sort(function (a, b) { return a - b; });
+    const isv = done.map(function (p) { return Math.max(0, p.is - 1); });   // số lần dừng giữa tầng lên và tầng đích
     const avg = function (a) { return a.length ? a.reduce(function (s, x) { return s + x; }, 0) / a.length : 0; };
-    // năng lực thực: số khách được trả trong từng cửa sổ 5 phút trong giai đoạn đo
+    // năng lực thực P5: số khách được trả trong từng cửa sổ 5 phút của giai đoạn đo — tính mọi khách được
+    // vận chuyển trong khoảng đó (kể cả khách gọi thang lúc khởi động), như P5 = 5n/T của ISO 8100-32
     const wins = Math.max(1, Math.floor(dur / 300));
     const hc = new Array(wins).fill(0);
-    done.forEach(function (p) { const w = Math.floor((p.ta - warm) / 300); if (w >= 0 && w < wins) hc[w]++; });
+    pax.forEach(function (p) { if (p.ta < 0) return; const w = Math.floor((p.ta - warm) / 300); if (w >= 0 && w < wins) hc[w]++; });
+    // xu hướng hàng chờ: số người chờ trung bình ở 1/4 đầu và 1/4 cuối giai đoạn đo
+    const sm = samples.filter(function (x) { return x.t >= warm && x.t <= Tgen; }), nq = sm.length;
+    const qAvg = function (a) { return a.length ? a.reduce(function (s, x) { return s + x.wait; }, 0) / a.length : 0; };
+    const qFirst = qAvg(sm.slice(0, Math.floor(nq / 4))), qLast = qAvg(sm.slice(Math.floor((3 * nq) / 4)));
     const perFloor = fl.map(function (f, i) {
       const ps = meas.filter(function (p) { return p.o === i; });
       return { name: f.name, n: ps.length, awt: avg(ps.map(function (p) { return (p.tb >= 0 ? p.tb : tEnd) - p.t; })) };
@@ -249,9 +287,12 @@
       demand5: (meas.length / dur) * 300,
       awt: avg(wt), wt50: pct(wt, 0.5), wt90: pct(wt, 0.9), wt95: pct(wt, 0.95), wtMax: wt.length ? wt[wt.length - 1] : 0,
       lw60: wt.length ? (wt.filter(function (x) { return x > 60; }).length / wt.length) * 100 : 0,
+      lw90: wt.length ? (wt.filter(function (x) { return x > 90; }).length / wt.length) * 100 : 0,
+      is: avg(isv),
       att: avg(tt), ajt: avg(jt), jt95: pct(jt, 0.95),
       hc5: avg(hc), hc5max: Math.max.apply(null, hc),
       hc5pct: gi.pop > 0 ? (avg(hc) / gi.pop) * 100 : 0,
+      qFirst: qFirst, qLast: qLast,
       overrun: Math.max(0, tEnd - Tgen), stopsPerCarHour: totalStops / L / (tEnd / 3600),
       wt: wt, samples: samples, perFloor: perFloor,
       pax: trace ? pax : undefined, cars: trace ? cars : undefined,
@@ -263,7 +304,7 @@
   AL.simulateRuns = function (gi, g, cfg, runs) {
     const res = [];
     for (let r = 0; r < runs; r++) res.push(AL.simulate(gi, g, Object.assign({}, cfg, { seed: (+cfg.seed || 1) + r * 7919 })));
-    const keys = ['n', 'served', 'unserved', 'demand5', 'awt', 'wt50', 'wt90', 'wt95', 'wtMax', 'lw60', 'att', 'ajt', 'jt95', 'hc5', 'hc5max', 'hc5pct', 'overrun', 'stopsPerCarHour'];
+    const keys = ['n', 'served', 'unserved', 'demand5', 'awt', 'wt50', 'wt90', 'wt95', 'wtMax', 'lw60', 'lw90', 'is', 'att', 'ajt', 'jt95', 'hc5', 'hc5max', 'hc5pct', 'qFirst', 'qLast', 'overrun', 'stopsPerCarHour'];
     const mean = {}, min = {}, max = {};
     keys.forEach(function (k) {
       const xs = res.map(function (x) { return x[k]; });
@@ -277,6 +318,7 @@
     const perFloor = res[0].perFloor.map(function (pf, i) {
       return { name: pf.name, n: res.reduce(function (s, x) { return s + x.perFloor[i].n; }, 0) / runs, awt: res.reduce(function (s, x) { return s + x.perFloor[i].awt; }, 0) / runs };
     });
-    return { runs: runs, mean: mean, min: min, max: max, wt: wtAll, samples: samples, perFloor: perFloor };
+    const each = res.map(function (x) { const o = {}; keys.forEach(function (k) { o[k] = x[k]; }); return o; });
+    return { runs: runs, mean: mean, min: min, max: max, each: each, wt: wtAll, samples: samples, perFloor: perFloor };
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -11,6 +11,7 @@ ArchiLift là công cụ nội bộ của Archivina để **tính giao thông th
 | 3 | [Mô phỏng vận hành](03-mo-phong.md) | Mô phỏng chạy ra sao, đọc biểu đồ thế nào |
 | 4 | [Tra kích thước thang theo hãng](04-kich-thuoc-thang.md) | Cách chọn cấu hình hố/pit/OH và các kiểm tra |
 | 5 | [Giới hạn và lưu ý](05-gioi-han-va-luu-y.md) | Giả định, điểm yếu đã biết, số liệu cần xác minh |
+| — | [Nhật ký thay đổi](CHANGELOG.md) | Bản mới nhất đã đổi gì, đã kiểm tra những gì |
 
 ## Luồng xử lý tổng quát
 
@@ -58,11 +59,13 @@ flowchart TD
 | INT | Khoảng cách giữa các chuyến = RTT/L | s |
 | HC5 | Năng lực vận chuyển 5 phút | người/5 phút, % |
 | AWT, ATT, AJT | Thời gian chờ, trong cabin, tổng hành trình (trung bình) | s |
-| WT, TT, DT, LW | Các đại lượng tương ứng đo trong mô phỏng; LW = % chờ > 60 s | s, % |
+| WT, TT, DT, LW | Các đại lượng tương ứng đo trong mô phỏng; LW = % chờ > 60 s (và > 90 s theo ISO 8100-32) | s, % |
+| IS | Số lần dừng giữa tầng lên và tầng đích (mô phỏng) | lần |
+| P5 | Số khách được chở trong 5 phút, đo trong mô phỏng (= HC5 thực) | người/5 phút |
 | BB × DD | Rộng × sâu cabin | mm |
 | LL | Rộng cửa thông thủy | mm |
 | WW × WD | Rộng × sâu hố thang | mm |
 | PH, OH | Sâu pit, chiều cao tầng trên cùng | mm |
 | CH, HH | Chiều cao cabin, chiều cao cửa | mm |
 
-*Cập nhật: 18/11/2026.*
+*Cập nhật: 19/11/2026.*

@@ -14,7 +14,7 @@ Dữ liệu tự lưu trong trình duyệt của từng máy. Lưu hồ sơ dự
 2. **Nhóm thang** – số cabin, tải trọng, vận tốc, gia tốc, jerk, thời gian cửa, tiêu chí; ma trận tầng dừng và phân bổ dân số (mỗi tầng tổng 100% → không cộng trùng).
 3. **Kết quả tính** – RTT, INT, HC5, %HC5, AWT/ATT/AJT ước tính, điểm làm việc theo nhu cầu, Đạt/Không đạt.
 4. **Chọn thang tự động** – duyệt số cabin × tải trọng × vận tốc, liệt kê phương án đạt, *Áp dụng* vào nhóm.
-5. **Mô phỏng** – cao điểm lên / xuống / hai chiều / hỗn hợp; WT, TT, DT, LW, HC5 thực, biểu đồ ùn tắc.
+5. **Mô phỏng** – cao điểm lên / xuống / hai chiều / hỗn hợp; mặc định đo 8 giờ; đón lệnh gọi giữa đường (bật/tắt); WT, TT, DT, IS, LW (> 60 s, > 90 s), HC5 thực, biểu đồ ùn tắc; **quét nhiều mức nhu cầu** để tìm giới hạn phục vụ (cách làm của báo cáo Schindler).
 6. **Báo cáo** – In / Lưu PDF, xuất CSV mở bằng Excel.
 
 ## Mã nguồn
@@ -24,7 +24,8 @@ Tài liệu kỹ thuật (thuật toán, đầu vào/đầu ra, giới hạn): x
 
 ## Đã kiểm tra
 - RTT khớp công thức CIBSE cổ điển (1 sảnh, tầng đều): S, H, RTT trùng đến 10⁻¹².
-- Mô phỏng cao điểm lên khi quá tải cho HC5 thực ≈ HC5 tính (8,3% so với 8,25% trên ví dụ).
+- Mô phỏng cao điểm lên khi quá tải (12%, 8 giờ) cho HC5 thực ≈ 9,1%, so với 8,25% tính toán. Mô phỏng cao hơn vì chở đầy 100% số người định mức, còn công thức dùng hệ số tải 80%.
+- Đón lệnh gọi giữa đường: thời điểm "còn kịp hãm" khớp tích phân số của profile chữ S; mọi khách được trả đúng tầng.
 
 ## Giới hạn (bản v1)
 Chưa có điều khiển đích đến (DCS), thang tầng kép, nhập trực tiếp file .xlsx (dùng dán từ Excel), lưu SQLite. Thông số cửa/gia tốc/jerk và tiêu chí mặc định là giá trị điển hình — cần xác nhận theo hãng và yêu cầu dự án. Kết quả để kiểm tra phương án nội bộ, cần đối chiếu báo cáo nhà thầu trước khi chốt.

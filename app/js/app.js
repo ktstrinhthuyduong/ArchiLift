@@ -15,7 +15,7 @@
     ['sizing', '4. Chọn thang tự động'], ['sim', '5. Mô phỏng'], ['report', '6. Báo cáo'], ['lifts', '7. Kích thước thang theo hãng'], ['method', 'Phương pháp'],
   ];
 
-  let S, tab = 'building', lastSim = null, lastSizing = null, ui = { gen: false, paste: false };
+  let S, tab = 'building', lastSim = null, lastSweep = null, lastSizing = null, ui = { gen: false, paste: false };
   const share = { on: false, client: '', name: '', isEditor: false, hasEditor: false, editorName: '', rev: -1, pushing: false, offline: false };
 
   const uid = function () { return Math.random().toString(36).slice(2, 9); };
@@ -64,13 +64,13 @@
     return {
       v: 1, project: { name: 'Ví dụ – chung cư 30 tầng, 3 hầm (số liệu giả định)', code: 'VD', author: '', note: 'Số liệu ví dụ để làm quen phần mềm, không thuộc dự án nào.' },
       floors: floors, datumId: floors[3].id, groups: [g],
-      sim: { profile: 'up', rate: 7, inc: 100, out: 0, inter: 0, dur: 1800, warm: 300, runs: 5, seed: 1, groupId: g.id },
+      sim: { profile: 'up', rate: 7, inc: 100, out: 0, inter: 0, dur: 28800, warm: 300, runs: 2, seed: 1, midRoute: true, sweep: '4, 5, 6, 7, 8, 9, 10, 11, 12', groupId: g.id },
       sizing: { maxL: 12, loads: AL.LOADS.join(', '), speeds: AL.SPEEDS.join(', '), groupId: g.id },
     };
   }
   function blank() {
     return { v: 1, project: { name: 'Dự án mới', code: '', author: '', note: '' }, floors: [], datumId: null, groups: [],
-      sim: { profile: 'up', rate: 7, inc: 100, out: 0, inter: 0, dur: 1800, warm: 300, runs: 5, seed: 1, groupId: null },
+      sim: { profile: 'up', rate: 7, inc: 100, out: 0, inter: 0, dur: 28800, warm: 300, runs: 2, seed: 1, midRoute: true, sweep: '4, 5, 6, 7, 8, 9, 10, 11, 12', groupId: null },
       sizing: { maxL: 12, loads: AL.LOADS.join(', '), speeds: AL.SPEEDS.join(', '), groupId: null } };
   }
   function save() {
@@ -379,28 +379,72 @@
       field('Khởi động bỏ qua (s)', inp('sim.warm', m.warm, { step: 60 })) +
       field('Số lần chạy', inp('sim.runs', m.runs, { step: 1 })) +
       field('Hạt giống', inp('sim.seed', m.seed, { step: 1 })) +
+      field('Đón lệnh gọi giữa đường', sel('sim.midRoute', m.midRoute === false ? 'off' : 'on', [['on', 'Bật'], ['off', 'Tắt']])) +
       '</div><p class="hint">Nhóm: ' + AL.capacityFromLoad(g.Q) + ' người/cabin × ' + g.L + ' cabin, ' + fmt(+g.v, 2) + ' m/s. Tỷ lệ lên/xuống/giữa tầng tự chuẩn hoá khi tổng ≠ 100%.</p>' +
-      '<button class="pri" data-act="runSim">Chạy mô phỏng</button> <span id="simStatus" class="hint"></span></div>';
+      '<p class="hint">Thời gian đo mặc định 28 800 s (8 giờ, như Schindler); ISO 8100-32 yêu cầu tối thiểu 7 200 s (2 giờ). Đón lệnh gọi giữa đường: cabin đang chạy dừng thêm ở tầng có lệnh gọi cùng chiều nếu còn kịp hãm.</p>' +
+      '<button class="pri" data-act="runSim">Chạy mô phỏng</button> <span id="simStatus" class="hint"></span>' +
+      '<h3>Quét nhiều mức nhu cầu</h3><p class="hint">Chạy lại mô phỏng ở từng mức nhu cầu (giữ nguyên kịch bản, tỷ lệ chuyến đi, thời gian đo, số lần chạy) để tìm mức nhu cầu cao nhất mà nhóm thang còn phục vụ được — cách làm của báo cáo Schindler.</p><div class="grid5">' +
+      field('Các mức nhu cầu (% dân số/5 phút)', inp('sim.sweep', m.sweep == null ? '4, 5, 6, 7, 8, 9, 10, 11, 12' : m.sweep, { type: 'text', ph: 'vd: 5, 6, 7, 8' })) +
+      '</div><button class="pri" data-act="runSweep">Quét nhu cầu</button> <span id="sweepStatus" class="hint"></span></div>';
     if (lastSim && lastSim.gid === g.id) h += simResult(lastSim);
+    if (lastSweep && lastSweep.gid === g.id) h += sweepResult(lastSweep);
     return h;
+  }
+  /* Một lượt chạy bị coi là ùn tắc (hàng chờ không ổn định) nếu: > 2% khách chưa được phục vụ khi kết thúc,
+     hoặc năng lực thực P5 < 95% nhu cầu sinh ra, hoặc hàng chờ 1/4 cuối giai đoạn đo > 2 lần 1/4 đầu (và hơn 10 người). */
+  function simSaturated(m) {
+    return m.unserved > 0.02 * m.n || m.hc5 < 0.95 * m.demand5 || (m.qLast > 2 * m.qFirst && m.qLast - m.qFirst > 10);
+  }
+  function satRuns(r) { return (r.each || [r.mean]).filter(simSaturated).length; }
+  function simCfg(m) {
+    const sum = (+m.inc || 0) + (+m.out || 0) + (+m.inter || 0);
+    if (!(sum > 0)) return null;
+    return { rate: +m.rate, inc: (+m.inc / sum) * 100, out: (+m.out / sum) * 100, inter: (+m.inter / sum) * 100, dur: +m.dur, warm: +m.warm, seed: +m.seed || 1,
+      homing: AL.PROFILES[m.profile].homing, midRoute: m.midRoute !== false };
+  }
+  function simCfgText(cfg, g, withRate) {
+    return (withRate ? fmt(cfg.rate, 1) + '%/5ph · ' : '') + 'lên ' + fmt(cfg.inc, 0) + '% / xuống ' + fmt(cfg.out, 0) + '% / giữa tầng ' + fmt(cfg.inter, 0) + '% · ' + g.L + '×' + g.Q + 'kg, ' + g.v + ' m/s · đo ' + fmt(cfg.dur / 3600, 1) + ' giờ · đón giữa đường: ' + (cfg.midRoute ? 'bật' : 'tắt');
+  }
+  function sweepResult(W) {
+    // giới hạn phục vụ: mức cao nhất còn đáp ứng mà mọi mức thấp hơn cũng đáp ứng
+    let lim = null;
+    for (let i = 0; i < W.rows.length && !W.rows[i].sat; i++) lim = W.rows[i];
+    const td = function (x, d) { return '<td class="num">' + fmt(x, d) + '</td>'; };
+    return '<div class="card"><div class="row-between"><h3>Quét mức nhu cầu — ' + esc(W.label) + ' · ' + esc(W.cfgText) + '</h3>' +
+      (lim ? '<span class="b ok">Giới hạn phục vụ ≈ ' + fmt(lim.rate, 1) + '% (' + fmt(lim.m.hc5, 1) + ' người/5 phút)</span>' : '<span class="b bad">Ùn tắc ngay từ mức thấp nhất</span>') + '</div>' +
+      '<table class="tbl small"><thead><tr><th>Nhu cầu đặt<br>(%/5 phút)</th><th>Nhu cầu sinh<br>(người/5 phút)</th><th>P5 – vận chuyển thực<br>(người/5 phút)</th><th>HC5 thực<br>(%)</th><th>WT<br>(s)</th><th>WT P90<br>(s)</th><th>DT<br>(s)</th><th>IS<br>(lần dừng)</th><th>LW &gt; 60 s<br>(%)</th><th>LW &gt; 90 s<br>(%)</th><th>Khách chưa<br>phục vụ</th><th>Trạng thái</th></tr></thead><tbody>' +
+      W.rows.map(function (x) {
+        const m = x.m;
+        return '<tr' + (x === lim ? ' class="curcfg-row"' : '') + '>' + td(x.rate, 1) + td(m.demand5, 1) + td(m.hc5, 1) + td(m.hc5pct, 2) + td(m.awt, 1) + td(m.wt90, 1) + td(m.ajt, 1) + td(m.is, 2) + td(m.lw60, 1) + td(m.lw90, 1) + td(m.unserved, 0) +
+          '<td style="white-space:nowrap">' + (!x.sat ? '<span class="b ok">Đáp ứng</span>' : x.satK < x.runs ? '<span class="b bad" title="' + x.satK + '/' + x.runs + ' lượt chạy bị ùn tắc">Bất ổn ' + x.satK + '/' + x.runs + '</span>' : '<span class="b bad">Ùn tắc</span>') + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<div class="cols2"><div><h4>WT – thời gian chờ trung bình theo mức nhu cầu</h4><canvas id="cvSwWT"></canvas></div><div><h4>LW – tỷ lệ chờ &gt; 90 s theo mức nhu cầu</h4><canvas id="cvSwLW"></canvas></div></div>' +
+      '<p class="hint">Mỗi mức là trung bình ' + W.runs + ' lần chạy. Mỗi lượt bị coi là ùn tắc (hàng chờ tăng không dừng) nếu năng lực thực P5 &lt; 95% nhu cầu sinh ra, hoặc &gt; 2% khách chưa được phục vụ khi kết thúc, hoặc số người chờ ở 1/4 cuối giai đoạn đo gấp hơn 2 lần 1/4 đầu. "Bất ổn": chỉ một số lượt ùn tắc — đã sát giới hạn. Giới hạn phục vụ là mức cao nhất mà nó và mọi mức thấp hơn đều đáp ứng. P5, WT, DT, IS, LW theo định nghĩa ISO 8100-32 / báo cáo Schindler (WT tính đến lúc cabin tới tầng, IS = số lần dừng giữa tầng lên và tầng đích).</p></div>';
+  }
+  function drawSweep() {
+    if (!lastSweep || !$('#cvSwWT')) return;
+    const R = lastSweep.rows, lab = R.map(function (x) { return fmt(x.rate, 1) + '%'; }), flag = R.map(function (x) { return x.sat; });
+    AL.barChart($('#cvSwWT'), lab, R.map(function (x) { return x.m.awt; }), { ylabel: 'WT (s)', xlabel: 'Nhu cầu (% dân số/5 phút) — cột đỏ: ùn tắc', flag: flag, height: 220 });
+    AL.barChart($('#cvSwLW'), lab, R.map(function (x) { return x.m.lw90; }), { ylabel: 'LW > 90 s (%)', xlabel: 'Nhu cầu (% dân số/5 phút) — cột đỏ: ùn tắc', flag: flag, height: 220 });
   }
   function simResult(L) {
     const m = L.r.mean, mn = L.r.min, mx = L.r.max;
     const row = function (lab, k, d, u) { return '<tr><td>' + lab + '</td><td class="num"><b>' + fmt(m[k], d) + '</b></td><td class="num">' + fmt(mn[k], d) + ' – ' + fmt(mx[k], d) + '</td><td>' + (u || '') + '</td></tr>'; };
-    const sat = m.unserved > 0.02 * m.n || m.hc5 < 0.95 * m.demand5; // năng lực thực không theo kịp nhu cầu
+    const sat = satRuns(L.r) > 0;
     return '<div class="card"><div class="row-between"><h3>Kết quả mô phỏng — ' + esc(L.label) + ' · ' + esc(L.cfgText) + '</h3>' +
       (sat ? '<span class="b bad">Nguy cơ ùn tắc</span>' : '<span class="b ok">Hệ thống đáp ứng</span>') + '</div><div class="cols2"><div><table class="tbl small"><thead><tr><th>Chỉ tiêu</th><th>Trung bình</th><th>Khoảng ' + L.r.runs + ' lần</th><th>Đơn vị</th></tr></thead><tbody>' +
       row('Số hành khách trong giai đoạn đo', 'n', 0, 'người') + row('Nhu cầu thực sinh ra', 'demand5', 1, 'người/5 phút') +
       row('Năng lực vận chuyển thực HC5', 'hc5', 1, 'người/5 phút') + row('HC5 thực (% dân số)', 'hc5pct', 2, '%') +
       row('<b>WT</b> – thời gian chờ trung bình (AWT)', 'awt', 1, 's') + row('Thời gian chờ trung vị', 'wt50', 1, 's') +
       row('Thời gian chờ phân vị 90%', 'wt90', 1, 's') + row('Thời gian chờ phân vị 95%', 'wt95', 1, 's') + row('Thời gian chờ lớn nhất', 'wtMax', 1, 's') +
-      row('<b>LW</b> – tỷ lệ chờ &gt; 60 s', 'lw60', 1, '%') + row('<b>TT</b> – thời gian trong cabin TB (ATT)', 'att', 1, 's') +
+      row('<b>LW</b> – tỷ lệ chờ &gt; 60 s', 'lw60', 1, '%') + row('<b>LW</b> – tỷ lệ chờ &gt; 90 s (ISO 8100-32)', 'lw90', 1, '%') +
+      row('<b>IS</b> – số lần dừng giữa tầng lên và tầng đích', 'is', 2, 'lần') + row('<b>TT</b> – thời gian trong cabin TB (ATT)', 'att', 1, 's') +
       row('<b>DT</b> – thời gian đến đích TB (AJT)', 'ajt', 1, 's') + row('Thời gian đến đích phân vị 95%', 'jt95', 1, 's') +
       row('Khách chưa được phục vụ khi kết thúc', 'unserved', 1, 'người') + row('Thời gian xả hàng chờ sau giai đoạn sinh khách', 'overrun', 0, 's') +
       row('Số lần dừng/cabin/giờ', 'stopsPerCarHour', 0, 'lần') +
       '</tbody></table></div><div><h4>Phân bố thời gian chờ</h4><canvas id="cvHist"></canvas><h4>Số người đang chờ theo thời gian (biểu đồ ùn tắc)</h4><canvas id="cvQueue"></canvas></div></div>' +
       '<h4>Thời gian chờ trung bình theo tầng xuất phát</h4><canvas id="cvFloor"></canvas>' +
-      '<p class="hint">Mô phỏng nội bộ phục vụ so sánh phương án; điều khiển nhóm đơn giản hoá (cabin chỉ chọn điểm dừng kế tiếp khi khởi hành, không có điều khiển đích đến DCS) nên kết quả thiên về an toàn. Cần đối chiếu với mô phỏng của nhà thầu thang máy trước khi chốt phương án.</p></div>';
+      '<p class="hint">Mô phỏng nội bộ phục vụ so sánh phương án; điều khiển nhóm đơn giản hoá (' + (L.cfg.midRoute ? 'điều khiển tập hợp hai chiều, có đón lệnh gọi giữa đường' : 'cabin chỉ chọn điểm dừng kế tiếp khi khởi hành, không đón lệnh gọi giữa đường') + ', không có điều khiển đích đến DCS) nên kết quả thiên về an toàn. Cần đối chiếu với mô phỏng của nhà thầu thang máy trước khi chốt phương án.</p></div>';
   }
   function drawSim() {
     if (!lastSim || !$('#cvHist')) return;
@@ -445,6 +489,7 @@
       }).join('') + '</tbody></table>';
     h += '<h3>6. Chi tiết tính toán từng nhóm</h3>' + rs.map(detail).join('');
     if (lastSim) h += '<h3>7. Mô phỏng vận hành</h3><p>Nhóm ' + esc(groupById(lastSim.gid).name) + '</p>' + simResult(lastSim);
+    if (lastSweep) h += '<h3>' + (lastSim ? '8' : '7') + '. Quét mức nhu cầu (mô phỏng)</h3><p>Nhóm ' + esc(groupById(lastSweep.gid).name) + '</p>' + sweepResult(lastSweep);
     h += '<h3>Giả định và giới hạn</h3><ul class="small">' +
       '<li>Phương pháp tính: RTT cao điểm lên theo CIBSE Guide D / Barney, mở rộng cho cao tầng không đều, nhiều ga vào (gồm tầng hầm) và vùng tốc hành. Sức chứa cabin CC = Q/75 làm tròn xuống (EN 81-20 / ISO 8100-1).</li>' +
       '<li>Thông số cửa, gia tốc, jerk, thời gian ra/vào và tiêu chí đánh giá là số liệu nhập; giá trị mặc định là điển hình, cần xác nhận với hãng thang và yêu cầu dự án.</li>' +
@@ -872,7 +917,7 @@
     });
   }
 
-  function afterRender() { tipify(); if (tab === 'sim') drawSim(); if (tab === 'report' && lastSim) drawSim(); }
+  function afterRender() { tipify(); if (tab === 'sim' || tab === 'report') { drawSim(); drawSweep(); } }
 
   /* ---------- sự kiện ---------- */
   function setBind(b, el) {
@@ -914,7 +959,7 @@
         }
       });
     } else if (p[0] === 'sim') {
-      S.sim[p[1]] = val;
+      S.sim[p[1]] = p[1] === 'midRoute' ? val === 'on' : val;
       if (p[1] === 'profile') { const pr = AL.PROFILES[val]; S.sim.inc = pr.inc; S.sim.out = pr.out; S.sim.inter = pr.inter; }
     } else if (p[0] === 'sizing') S.sizing[p[1]] = val;
     else if (p[0] === 'lift') {
@@ -1044,17 +1089,41 @@
       case 'runSim': {
         const g = groupById(S.sim.groupId), gi = AL.buildGroupInput(S, g), e = AL.evaluate(gi, g);
         if (e.errors.length) { alert(e.errors.join('\n')); return; }
-        const m = S.sim, sum = (+m.inc || 0) + (+m.out || 0) + (+m.inter || 0);
-        if (!(sum > 0)) { alert('Tỷ lệ lên/xuống/giữa tầng phải > 0.'); return; }
-        const cfg = { rate: +m.rate, inc: (+m.inc / sum) * 100, out: (+m.out / sum) * 100, inter: (+m.inter / sum) * 100, dur: +m.dur, warm: +m.warm, seed: +m.seed || 1, homing: AL.PROFILES[m.profile].homing };
+        const m = S.sim, cfg = simCfg(m);
+        if (!cfg) { alert('Tỷ lệ lên/xuống/giữa tầng phải > 0.'); return; }
         $('#simStatus').textContent = 'Đang chạy…';
         setTimeout(function () {
           const t0 = performance.now();
           const r = AL.simulateRuns(gi, g, cfg, Math.max(1, Math.min(50, Math.round(+m.runs || 1))));
           lastSim = { gid: g.id, r: r, cfg: cfg, label: AL.PROFILES[m.profile].label,
-            cfgText: fmt(cfg.rate, 1) + '%/5ph · lên ' + fmt(cfg.inc, 0) + '% / xuống ' + fmt(cfg.out, 0) + '% / giữa tầng ' + fmt(cfg.inter, 0) + '% · ' + g.L + '×' + g.Q + 'kg, ' + g.v + ' m/s', ms: performance.now() - t0 };
+            cfgText: simCfgText(cfg, g, true), ms: performance.now() - t0 };
           render();
         }, 30);
+        return;
+      }
+      case 'runSweep': {
+        const g = groupById(S.sim.groupId), gi = AL.buildGroupInput(S, g), e = AL.evaluate(gi, g);
+        if (e.errors.length) { alert(e.errors.join('\n')); return; }
+        const m = S.sim, cfg = simCfg(m);
+        if (!cfg) { alert('Tỷ lệ lên/xuống/giữa tầng phải > 0.'); return; }
+        const rates = parseList(m.sweep == null ? '4, 5, 6, 7, 8, 9, 10, 11, 12' : m.sweep).filter(function (x, i, a) { return a.indexOf(x) === i; }).sort(function (a, b) { return a - b; });
+        if (!rates.length) { alert('Nhập ít nhất một mức nhu cầu > 0, ví dụ: 5, 6, 7, 8.'); return; }
+        if (rates.length > 40) { alert('Tối đa 40 mức nhu cầu.'); return; }
+        const runs = Math.max(1, Math.min(50, Math.round(+m.runs || 1))), rows = [], st = $('#sweepStatus');
+        const step = function (i) {
+          if (i >= rates.length) {
+            lastSweep = { gid: g.id, rows: rows, runs: runs, cfg: cfg, label: AL.PROFILES[m.profile].label, cfgText: simCfgText(cfg, g, false) };
+            render(); return;
+          }
+          if (st) st.textContent = 'Đang chạy mức ' + fmt(rates[i], 1) + '% (' + (i + 1) + '/' + rates.length + ')…';
+          setTimeout(function () {
+            const r = AL.simulateRuns(gi, g, Object.assign({}, cfg, { rate: rates[i] }), runs);
+            const k = satRuns(r);
+            rows.push({ rate: rates[i], m: r.mean, sat: k > 0, satK: k, runs: r.runs });
+            step(i + 1);
+          }, 15);
+        };
+        step(0);
         return;
       }
       case 'print': window.print(); return;
@@ -1094,8 +1163,8 @@
         break;
       }
       case 'csv': exportCsv(); return;
-      case 'new': if (!confirm('Tạo dự án mới? Dữ liệu chưa lưu file .json sẽ mất.')) return; S = blank(); lastSim = lastSizing = null; tab = 'building'; break;
-      case 'example': if (!confirm('Nạp dự án ví dụ (thay dữ liệu hiện tại)?')) return; S = example(); lastSim = lastSizing = null; tab = 'building'; break;
+      case 'new': if (!confirm('Tạo dự án mới? Dữ liệu chưa lưu file .json sẽ mất.')) return; S = blank(); lastSim = lastSweep = lastSizing = null; tab = 'building'; break;
+      case 'example': if (!confirm('Nạp dự án ví dụ (thay dữ liệu hiện tại)?')) return; S = example(); lastSim = lastSweep = lastSizing = null; tab = 'building'; break;
       case 'open': $('#fileIn').click(); return;
       case 'saveFile': {
         const name = (S.project.code ? S.project.code + '_' : '') + 'ArchiLift_' + new Date().toISOString().slice(0, 10) + '.json';
@@ -1109,7 +1178,7 @@
     const f = ev.target.files[0]; if (!f) return;
     const rd = new FileReader();
     rd.onload = function () {
-      try { const s = JSON.parse(rd.result); if (!s.floors || !s.groups) throw new Error('Sai định dạng'); S = s; lastSim = lastSizing = null; save(); render(); }
+      try { const s = JSON.parse(rd.result); if (!s.floors || !s.groups) throw new Error('Sai định dạng'); S = s; lastSim = lastSweep = lastSizing = null; save(); render(); }
       catch (e) { alert('Không đọc được file: ' + e.message); }
     };
     rd.readAsText(f, 'utf-8'); ev.target.value = '';
@@ -1144,7 +1213,7 @@
   try { ui.mergeMatrix = localStorage.getItem(STORE + '.mergeM') !== '0'; } catch (e) { ui.mergeMatrix = true; }
   render();
   shareInit();
-  window.addEventListener('resize', function () { if (tab === 'sim' || tab === 'report') drawSim(); });
+  window.addEventListener('resize', function () { if (tab === 'sim' || tab === 'report') { drawSim(); drawSweep(); } });
 
   /* ---------- mặt bằng công trình (tab 6): dán / kéo thả ảnh, đặt – dời – đổi tên – xoá nhãn ---------- */
   document.addEventListener('paste', function (ev) {
@@ -1252,7 +1321,7 @@
   }
   function shareLoad() {
     return fetch('api/state', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (m) {
-      if (m.data && m.data.floors) { S = m.data; lastSim = lastSizing = null; }
+      if (m.data && m.data.floors) { S = m.data; lastSim = lastSweep = lastSizing = null; }
       share.rev = m.rev;
       return m;
     });
@@ -1316,7 +1385,7 @@
     el.innerHTML = h;
   }
   /* người xem: chặn mọi thao tác làm thay đổi dự án (bắt ở pha capture, trước các xử lý khác) */
-  const VIEW_ACTS = ['tab', 'print', 'csv', 'saveFile', 'mergeZoning', 'mergeFloors', 'mergeMatrix', 'runSim', 'runSizing', 'shareClaim', 'shareRelease'];
+  const VIEW_ACTS = ['tab', 'print', 'csv', 'saveFile', 'mergeZoning', 'mergeFloors', 'mergeMatrix', 'runSim', 'runSweep', 'runSizing', 'shareClaim', 'shareRelease'];
   const viewer = function () { return share.on && !share.isEditor; };
   ['click', 'change', 'mousedown', 'contextmenu', 'paste', 'drop', 'dblclick'].forEach(function (type) {
     document.addEventListener(type, function (ev) {

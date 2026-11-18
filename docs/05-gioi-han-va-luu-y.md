@@ -20,7 +20,8 @@ Phần mềm dùng để **kiểm tra phương án nội bộ ở giai đoạn C
 ## 5.2. Giới hạn của mô phỏng
 
 - Điều khiển tập hợp hai chiều; **chưa có điều khiển đích đến (DCS)**, thang tầng kép, đỗ thang chủ động.
-- Cabin chỉ chọn điểm dừng lúc khởi hành, không đón lệnh gọi phát sinh giữa đường → hơi bi quan với giao thông hai chiều.
+- Đón lệnh gọi giữa đường (mặc định bật) chỉ xét lệnh gọi **cùng chiều**, cabin còn chỗ và còn kịp hãm theo profile chữ S; không hãm gấp, không giao lại lệnh gọi đã giao cho cabin khác. Tắt công tắc thì cabin chỉ chọn điểm dừng lúc khởi hành → hơi bi quan với giao thông hai chiều.
+- Tiêu chí ùn tắc (mục 3.4 tài liệu 3) là quy ước của ArchiLift, báo cáo Schindler không công bố tiêu chí của họ.
 - Cabin được chở đầy **100%** số người định mức, trong khi phần tính năng lực dùng 80% → mô phỏng hơi lạc quan về năng lực lúc bão hòa.
 
 ## 5.3. Các điểm đã biết cần sửa hoặc cẩn thận
@@ -30,7 +31,7 @@ Phần mềm dùng để **kiểm tra phương án nội bộ ở giai đoạn C
 | 1 | Kiểm tra thang chữa cháy dùng **v ≥ H/60**, chưa tính tăng/giảm tốc và đóng cửa → dễ dãi hơn thực tế (H = 104 m, v = 1,75 m/s: báo đạt nhưng thời gian chạy thực ≈ 61,8 s) | `lifts.js`, kiểm tra thang chữa cháy | Chọn vận tốc cao hơn một bậc so với H/60 |
 | 2 | Chọn thang tự động không biết tổ hợp tải × vận tốc nào có thật, nên có thể gợi ý phương án phi thực tế (ví dụ mẫu: 4 × 1050 kg × 7 m/s) | `engine.js`, `AL.size` | Luôn nhập **vận tốc tối đa** và **tải trọng tối thiểu** phù hợp |
 | 3 | Tiêu chí "hệ số tải tại nhu cầu" luôn so với 80%, không theo ô hệ số tải người dùng nhập | `engine.js`, `AL.evaluate` | Nếu đổi hệ số tải khác 80%, tự đọc giá trị để so |
-| 4 | Việc HC5 mô phỏng ≈ HC5 tính toán chưa phải bằng chứng hai mô hình khớp (xem 5.2) | README | Đối chiếu với báo cáo của hãng |
+| 4 | HC5 mô phỏng lúc bão hòa (≈ 9,1% ở dự án mẫu) cao hơn HC5 tính (8,25%) vì mô phỏng chở đầy 100% CC (xem 5.2). Con số "8,3%" ghi trước đây đo ở lượt 30 phút, khi P5 còn bị đếm thiếu | `sim.js` | Đối chiếu với báo cáo của hãng |
 
 ## 5.4. Số liệu mặc định cần xác minh
 

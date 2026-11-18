@@ -73,10 +73,14 @@ Ví dụ: tầng T10 có 40 người, nhóm A nhận 60% và nhóm B nhận 40% 
 | Kịch bản | Cao điểm lên / xuống / hai chiều giờ trưa / hỗn hợp | Cao điểm lên |
 | Cường độ (%/5 ph) | Số người phát sinh trong 5 phút, tính theo % dân số nhóm | 7 |
 | Tỷ lệ vào / ra / giữa các tầng | Chỉ dùng cho kịch bản hỗn hợp | 40 / 40 / 20 |
-| Thời gian đo (s) | Khoảng thời gian lấy số liệu | 1800 (30 phút) |
+| Thời gian đo (s) | Khoảng thời gian lấy số liệu. ISO 8100-32 yêu cầu tối thiểu 7200 s (2 giờ); Schindler dùng ≥ 8 giờ | 28800 (8 giờ) |
 | Khởi động (s) | Thời gian chạy trước, **không tính** vào kết quả | 300 |
-| Số lần chạy | Chạy nhiều lần với hạt giống ngẫu nhiên khác nhau rồi lấy trung bình | 5 |
+| Số lần chạy | Chạy nhiều lần với hạt giống ngẫu nhiên khác nhau rồi lấy trung bình | 2 |
 | Hạt giống (seed) | Cùng seed → cùng kết quả | 1 |
+| Đón lệnh gọi giữa đường | Bật: cabin đang chạy dừng thêm ở tầng có lệnh gọi cùng chiều nếu còn kịp hãm. Tắt: cabin chỉ chọn điểm dừng lúc khởi hành (cách cũ) | Bật |
+| Các mức nhu cầu quét (%/5 ph) | Danh sách mức nhu cầu cho nút **Quét nhu cầu**, cách nhau bằng dấu phẩy | 4, 5, 6, 7, 8, 9, 10, 11, 12 |
+
+> Dự án đã lưu trước đây giữ nguyên giá trị cũ (ví dụ 1800 s, 5 lần chạy); giá trị mặc định mới chỉ áp dụng cho dự án tạo mới hoặc bấm **Ví dụ**. Một lượt 8 giờ chạy mất khoảng 20–150 ms.
 
 ### e) Chọn thang tự động (tab 4)
 
@@ -138,14 +142,17 @@ Danh sách các phương án **đạt mọi tiêu chí**, mỗi dòng gồm: s�
 |---|---|
 | Số khách, đã phục vụ, chưa phục vụ | Số khách phát sinh trong giai đoạn đo |
 | WT trung bình, P50, P90, P95, lớn nhất | Thời gian chờ (s). P90 = 90% khách chờ ít hơn số này |
-| LW | % khách chờ quá 60 s |
+| LW | % khách chờ quá 60 s và quá 90 s (ngưỡng 90 s theo ISO 8100-32 / báo cáo Schindler) |
+| IS | Số lần cabin dừng trung bình giữa tầng lên và tầng đích của một khách |
 | TT, DT, DT P95 | Thời gian trong cabin; thời gian từ lúc gọi đến lúc tới đích |
-| HC5 thực | Số khách được chở tới đích trong mỗi 5 phút (trung bình và lớn nhất) |
+| HC5 thực (P5) | Số khách được chở tới đích trong mỗi 5 phút của giai đoạn đo (trung bình và lớn nhất), tính cả khách gọi thang lúc khởi động |
 | Thời gian vượt | Sau khi ngừng phát sinh khách, còn mất bao lâu để chở hết người đang chờ |
 | Số lần dừng / cabin / giờ | Mức độ làm việc của cabin |
 | Biểu đồ | Phân bố thời gian chờ; số người chờ theo thời gian (đường đi lên liên tục = ùn tắc); AWT theo tầng xuất phát |
 
 Mỗi chỉ số có giá trị trung bình và khoảng min–max qua các lần chạy.
+
+**Quét nhu cầu:** bảng một dòng cho mỗi mức nhu cầu — nhu cầu sinh ra, P5, HC5 thực %, WT, WT P90, DT, IS, LW > 60 s, LW > 90 s, khách chưa phục vụ, trạng thái (*Đáp ứng* / *Bất ổn k/n* / *Ùn tắc*), kèm **giới hạn phục vụ** và hai biểu đồ WT, LW > 90 s theo mức nhu cầu. Chi tiết: [tài liệu 3, mục 3.5](03-mo-phong.md#35-quét-nhiều-mức-nhu-cầu).
 
 ### d) Kích thước thang (tab 7)
 
