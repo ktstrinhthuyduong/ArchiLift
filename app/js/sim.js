@@ -2,7 +2,11 @@
    Mỗi hành khách ảo có tầng đi, tầng đến, thời điểm gọi; cabin chạy theo điều khiển
    tập hợp hai chiều (directional collective), lệnh gọi tầng phân cho cabin có thời gian
    đến dự kiến nhỏ nhất. cfg.midRoute (mặc định bật): cabin đang chạy được đổi điểm dừng
-   sang tầng có lệnh gọi cùng chiều nằm giữa đường nếu còn kịp hãm theo profile S. */
+   sang tầng có lệnh gọi cùng chiều nằm giữa đường nếu còn kịp hãm theo profile S.
+   cfg.ctrl = 'dcs': điều khiển gọi tầng đích (DCS) — khách nhập tầng đến tại sảnh tầng, được phân ngay
+   một cabin cố định theo chi phí: thời gian chờ ước tính + số điểm dừng mới (tầng đi, tầng đến) nhân với
+   số khách bị ảnh hưởng (đang trong cabin + đã được phân cho cabin), có ràng buộc sức chở.
+   cfg.cap: sức chở khi mô phỏng (% số người định mức, mặc định 100; báo cáo Kone dùng ~80%). */
 (function (global) {
   'use strict';
   const AL = global.AL;
@@ -36,7 +40,10 @@
 
   AL.simulate = function (gi, g, cfg) {
     const v = +g.v, acc = +g.a, jk = +g.j, to = +g.to, tc = +g.tc, tsd = +g.tsd, tp = +g.tp;
-    const CC = AL.capacityFromLoad(g.Q), L = Math.max(1, Math.round(+g.L));
+    const capPct = +cfg.cap > 0 ? Math.min(100, +cfg.cap) : 100;
+    const CC = Math.max(1, Math.floor(AL.capacityFromLoad(g.Q) * capPct / 100 + 1e-9)), L = Math.max(1, Math.round(+g.L));
+    const dcs = cfg.ctrl === 'dcs';
+    const DCS_W = cfg.dcsW != null ? +cfg.dcsW : 1;   // trọng số phạt điểm dừng mới theo số khách bị ảnh hưởng
     const fl = gi.served, n = fl.length, z = fl.map(function (f) { return f.z; });
     const upIdx = gi.upper.map(function (f) { return fl.indexOf(f); });
     const entIdx = gi.entr.map(function (f) { return fl.indexOf(f); });
@@ -94,25 +101,33 @@
     const cars = [];
     for (let c = 0; c < L; c++) {
       const f0 = homing ? home : Math.round((c * (n - 1)) / Math.max(1, L - 1));
-      cars.push({ id: c, f: f0, st: 0, dir: 0, timer: 0, tgt: -1, tTrip: 0, load: [], calls: new Int32Array(n), stops: 0, isStops: 0 });
+      const car = { id: c, f: f0, st: 0, dir: 0, timer: 0, tgt: -1, tTrip: 0, load: [], calls: new Int32Array(n), stops: 0, isStops: 0 };
+      if (dcs) {   // khách đã được phân cho cabin, đang chờ tại từng tầng theo chiều; số khách chờ theo tầng đến
+        car.pkU = []; car.pkD = []; car.dst = new Int32Array(n); car.nAsg = 0;
+        for (let i = 0; i < n; i++) { car.pkU.push([]); car.pkD.push([]); }
+      }
+      cars.push(car);
     }
-    const pending = [];
+    const pending = [], pendingPax = [];
     const trace = cfg.trace || null; // mảng ghi sự kiện để kiểm tra (tuỳ chọn)
     let delivered = 0;
     t = 0;
 
-    function isTarget(c, k) { return c.calls[k] > 0 || asgUp[k] === c.id || asgDn[k] === c.id; }
+    function upCall(c, k) { return dcs ? c.pkU[k].length > 0 : asgUp[k] === c.id; }
+    function dnCall(c, k) { return dcs ? c.pkD[k].length > 0 : asgDn[k] === c.id; }
+    function isTarget(c, k) { return c.calls[k] > 0 || upCall(c, k) || dnCall(c, k); }
+    function waitQ(c, f, d) { return dcs ? (d > 0 ? c.pkU[f] : c.pkD[f]) : (d > 0 ? qUp[f] : qDn[f]); }
     function anyDir(c, f, dir) {
       for (let k = f + dir; k >= 0 && k < n; k += dir) if (isTarget(c, k)) return true;
       return false;
     }
     function scan(c, f, dir) {
       if (dir > 0) {
-        for (let k = f + 1; k < n; k++) if (c.calls[k] > 0 || asgUp[k] === c.id) return k;
-        for (let k = n - 1; k > f; k--) if (asgDn[k] === c.id) return k;
+        for (let k = f + 1; k < n; k++) if (c.calls[k] > 0 || upCall(c, k)) return k;
+        for (let k = n - 1; k > f; k--) if (dnCall(c, k)) return k;
       } else {
-        for (let k = f - 1; k >= 0; k--) if (c.calls[k] > 0 || asgDn[k] === c.id) return k;
-        for (let k = 0; k < f; k++) if (asgUp[k] === c.id) return k;
+        for (let k = f - 1; k >= 0; k--) if (c.calls[k] > 0 || dnCall(c, k)) return k;
+        for (let k = 0; k < f; k++) if (upCall(c, k)) return k;
       }
       return -1;
     }
@@ -128,7 +143,7 @@
       return scan(c, f, -c.dir);
     }
     function chooseDir(c) {
-      const f = c.f, upHere = qUp[f].length > 0, dnHere = qDn[f].length > 0;
+      const f = c.f, upHere = waitQ(c, f, 1).length > 0, dnHere = waitQ(c, f, -1).length > 0;
       const above = anyDir(c, f, 1), below = anyDir(c, f, -1);
       if (c.dir > 0) { if (above || upHere) return 1; if (dnHere || below) return -1; return 0; }
       if (c.dir < 0) { if (below || dnHere) return -1; if (upHere || above) return 1; return 0; }
@@ -136,13 +151,18 @@
     }
     function board(c, reopen) {
       if (c.dir === 0) return 0;
-      const q = c.dir > 0 ? qUp[c.f] : qDn[c.f], A = c.dir > 0 ? asgUp : asgDn;
+      const q = waitQ(c, c.f, c.dir);
       let k = 0;
       while (q.length && c.load.length < CC) {
         const p = q.shift();
+        if (dcs) { c.dst[p.d]--; c.nAsg--; }
         p.tb = t; p.sb = c.isStops - (reopen ? 1 : 0); c.load.push(p); c.calls[p.d]++; k++;
       }
-      A[c.f] = -1;
+      if (dcs) {   // cabin đầy: khách còn lại được phân lại cho cabin khác
+        while (q.length) { const p = q.shift(); c.dst[p.d]--; c.nAsg--; pendingPax.push(p); }
+        return k;
+      }
+      (c.dir > 0 ? asgUp : asgDn)[c.f] = -1;
       if (q.length) pending.push([c.f, c.dir]);
       return k;
     }
@@ -205,7 +225,36 @@
         if (trace) trace.push(['mid', +t.toFixed(1), c.id, c.f, f, +c.timer.toFixed(1)]);
       }
     }
+    /* DCS: phân khách cho một cabin cố định. Chi phí = thời gian chờ ước tính
+       + (số điểm dừng mới) × thời gian một lần dừng × (1 + DCS_W × số khách bị ảnh hưởng). */
+    function assignDcs(p) {
+      const o = p.o, d = p.d > p.o ? 1 : -1;
+      let best = null, bc = Infinity;
+      for (let i = 0; i < L; i++) {
+        const c = cars[i];
+        const atDoor = c.st === 2 && c.f === o && c.dir === d && c.timer > tc;
+        const q = d > 0 ? c.pkU[o] : c.pkD[o];
+        const ahead = c.dir === d && (o - c.f) * d >= 0;          // cabin đang đi cùng chiều, chưa qua tầng gọi
+        const loadAt = (atDoor || ahead) ? c.load.length : 0;
+        let cost = atDoor ? 0 : estimate(c, o, d);
+        if (loadAt + q.length >= CC) cost += 1000;               // không còn chỗ
+        const newO = (atDoor || isTarget(c, o)) ? 0 : 1;
+        const newD = (c.calls[p.d] > 0 || c.dst[p.d] > 0) ? 0 : 1;
+        cost += (newO + newD) * tsEst * (1 + DCS_W * (c.load.length + c.nAsg));
+        if (cost < bc) { bc = cost; best = c; }
+      }
+      const c = best;
+      if (c.st === 2 && c.f === o && c.dir === d && c.load.length < CC && c.timer > tc) {   // cabin đang mở cửa: vào luôn
+        p.tb = t; p.sb = c.isStops - 1; c.load.push(p); c.calls[p.d]++; c.timer += tp; return;
+      }
+      (d > 0 ? c.pkU[o] : c.pkD[o]).push(p); c.dst[p.d]++; c.nAsg++;
+      if (d === c.dir && c.load.length < CC && canStopAt(c, o)) {   // đổi điểm dừng kế tiếp sang tầng gọi
+        const el = c.tTrip - c.timer;
+        c.tgt = o; c.tTrip = TF[c.f][o] + tsd; c.timer = c.tTrip - el;
+      }
+    }
     function newPax(p) {
+      if (dcs) { assignDcs(p); return; }
       const d = p.d > p.o ? 1 : -1;
       for (let i = 0; i < L; i++) {
         const c = cars[i];
@@ -220,7 +269,7 @@
       const f = c.f;
       if (c.load.length < CC) {
         const d0 = chooseDir(c); // chỉ mở cửa lại nếu có khách tại tầng đúng chiều sẽ đi
-        if (d0 !== 0 && (d0 > 0 ? qUp[f] : qDn[f]).length) { arrive(c, true); return; }
+        if (d0 !== 0 && waitQ(c, f, d0).length) { arrive(c, true); return; }
       }
       let k = nextTarget(c);
       if (k < 0) {
@@ -249,9 +298,11 @@
         const pr = pending.shift();
         if ((pr[1] > 0 ? qUp : qDn)[pr[0]].length) registerCall(pr[0], pr[1]);
       }
+      while (pendingPax.length) assignDcs(pendingPax.shift());
       if (t >= nextSample) {
         let w = 0;
-        for (let i = 0; i < n; i++) w += qUp[i].length + qDn[i].length;
+        if (dcs) cars.forEach(function (c) { w += c.nAsg; });
+        else for (let i = 0; i < n; i++) w += qUp[i].length + qDn[i].length;
         samples.push({ t: t, wait: w });
         nextSample += 10;
       }

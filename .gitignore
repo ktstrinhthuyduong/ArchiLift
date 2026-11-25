@@ -6,3 +6,9 @@ Catalog hãng/
 # chỉ đưa gói zip mới nhất lên GitHub
 ArchiLift_DongGoi_*.zip
 !ArchiLift_DongGoi_2026-11-18_v04.zip
+# lối tắt chứa IP mạng nội bộ, tạo khi cài máy chủ
+MayChu/ArchiLift_*.url
+# gói offline: tạo lại bằng Offline/DongGoi_Offline.py
+ArchiLift_Offline_*.zip
+# bản sao lưu dự án chung (dữ liệu dự án, không đưa lên GitHub)
+_shared/backup/

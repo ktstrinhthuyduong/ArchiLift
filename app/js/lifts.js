@@ -71,7 +71,7 @@
         const du = (m.duty || []).filter(function (d) { return Math.abs(d[0] - +L.v) < 1e-9; })[0];
         if (du && +L.travel > 0) res.checks.push({ label: 'Hành trình ≤ giới hạn của dòng máy', val: +L.travel + ' m', target: '≤ ' + du[2] + ' m', ok: +L.travel <= du[2], src: m.model });
         if (du && +L.stops > 0) res.checks.push({ label: 'Số điểm dừng ≤ giới hạn', val: L.stops, target: '≤ ' + du[3], ok: +L.stops <= du[3], src: m.model });
-        if (L.cat === 'fire' && +L.travel > 0) res.checks.push({ label: 'Thang chữa cháy: vận tốc ≥ H/60 (H = chiều cao nâng)', val: L.v + ' m/s', target: '≥ ' + (+L.travel / 60).toFixed(2) + ' m/s', ok: +L.v >= +L.travel / 60, src: 'QCVN 06:2022/BXD + SĐ1:2023, TCVN 6396-72 — cần xác minh điều khoản' });
+        if (L.cat === 'fire' && +L.travel > 0) res.checks.push(fireCheck(L, 'QCVN 06:2022/BXD + SĐ1:2023, TCVN 6396-72 — cần xác minh điều khoản'));
         return res;
       }
       res.loads = Array.from(new Set(rows.map(function (r) { return r.Q; }))).sort(function (a, b) { return a - b; });
@@ -108,12 +108,20 @@
         res.checks.push({ label: 'Thang chữa cháy: rộng cabin ≥ 1100 mm', val: r.BB, target: '≥ 1100', ok: r.BB >= 1100, src: src });
         res.checks.push({ label: 'Thang chữa cháy: sâu cabin ≥ ' + needD + ' mm' + (L.stretcher ? ' (có cáng/giường)' : ''), val: r.DD, target: '≥ ' + needD, ok: r.DD >= needD, src: src });
         res.checks.push({ label: 'Thang chữa cháy: tải trọng ≥ ' + needQ + ' kg', val: L.Q, target: '≥ ' + needQ, ok: +L.Q >= needQ, src: src });
-        if (+L.travel > 0) res.checks.push({ label: 'Thang chữa cháy: vận tốc ≥ H/60 (H = chiều cao nâng)', val: L.v + ' m/s', target: '≥ ' + (+L.travel / 60).toFixed(2) + ' m/s', ok: +L.v >= +L.travel / 60, src: src });
+        if (+L.travel > 0) res.checks.push(fireCheck(L, src));
       }
       return res;
     },
 
   };
+
+  /* Thang chữa cháy: thời gian chạy hết hành trình (kể cả tăng/giảm tốc, profile S) ≤ 60 s,
+     tính từ lúc cửa đã đóng. Trước đây dùng v ≥ H/60 — bỏ qua tăng/giảm tốc nên dễ dãi hơn thực tế. */
+  function fireCheck(L, src) {
+    const t = AL.fireRunTime(L.travel, L.v, L.a, L.j);
+    return { label: 'Thang chữa cháy: thời gian chạy hết hành trình H = ' + (+L.travel) + ' m ≤ 60 s (tính cả tăng/giảm tốc, từ lúc cửa đã đóng; a = ' + (+L.a > 0 ? +L.a : 1.0) + ' m/s², jerk ' + (+L.j > 0 ? +L.j : 1.5) + ' m/s³)',
+      val: t.toFixed(1) + ' s (v = ' + L.v + ' m/s)', target: '≤ 60 s', ok: t <= 60, src: src };
+  }
 
   AL.LiftTab.library = library;
   AL.LiftTab.DOORS = DOORS;

@@ -83,6 +83,44 @@ Trong thời gian trễ khởi hành t_sd, cabin chưa chuyển động nên đ�
 
 Tắt công tắc thì cabin chỉ chọn điểm dừng **lúc khởi hành** (cách làm trước đây). Lệnh gọi phát sinh ở tầng giữa đường không được đón trong chuyến đó, nên kết quả hai chiều hơi **bi quan**. Ví dụ dự án mẫu, 8 giờ, hai chiều 50/50 ở 7%: WT 38,4 → 32,0 s và LW > 90 s 11,1 → 7,5% khi bật. Cao điểm lên gần như không đổi.
 
+#### Gọi tầng đích (DCS)
+
+Chọn **Điều khiển nhóm = Gọi tầng đích (DCS)** (biến `S.sim.ctrl = 'dcs'`, mặc định `'col'` = tập hợp hai chiều).
+
+- Khách nhập **tầng đến** ngay tại sảnh tầng và được phân **ngay một cabin cố định**. Không có hàng chờ chung theo tầng: mỗi cabin giữ danh sách khách đã phân tại từng tầng, theo từng chiều.
+- **Chi phí** khi phân khách đi từ tầng o đến tầng d cho cabin c:
+  `chi phí = thời gian chờ ước tính + (số điểm dừng mới) × t_s × (1 + W × số khách bị ảnh hưởng)`
+  - thời gian chờ ước tính dùng cùng hàm ước tính với chế độ tập hợp; bằng 0 nếu cabin đang mở cửa đúng chiều tại tầng o;
+  - số điểm dừng mới là 0–2: tầng o (nếu cabin chưa định dừng ở đó) và tầng d (nếu chưa có khách nào trong cabin hoặc đã phân cho cabin đi tới d);
+  - t_s là thời gian một lần dừng ước tính;
+  - số khách bị ảnh hưởng = khách đang trong cabin + khách đã phân cho cabin còn đang chờ;
+  - W = 1 (biến `cfg.dcsW`, chưa có ô nhập).
+  - Cabin không còn chỗ (tải lúc tới tầng o + khách đã phân tại o ≥ sức chở) bị cộng 1000 s.
+- Cách tính này gom khách cùng tầng đến vào một cabin, nên **IS giảm rõ** so với điều khiển tập hợp.
+- Cabin đầy, khách còn lại tại tầng được **phân lại** cho cabin khác.
+- Cabin đang chạy cùng chiều, còn kịp hãm, cũng đổi điểm dừng sang tầng của khách vừa phân, như đón giữa đường.
+- Đây là thuật toán gần đúng. Thuật toán DCS của các hãng là bí mật nên ArchiLift không mô phỏng lại được.
+
+#### Sức chở khi mô phỏng
+
+Ô **Sức chở khi mô phỏng (% định mức)** (biến `S.sim.cap`, mặc định 100).
+- Số khách tối đa trong cabin = ⌊định mức × %⌋.
+- Kone dùng *passenger capacity* 14/18 người (~80%), nên khi đối chiếu báo cáo Kone thì nhập 80.
+
+#### Đối chiếu Kone 254 HQV (8 thang 1350 kg, DCS, sức chở 80%, 5 lần × 30 phút)
+
+| Zone / luồng | WT Kone | WT ArchiLift | TTD Kone | DT ArchiLift | IS Kone / ArchiLift |
+|---|---|---|---|---|---|
+| Thấp – up-peak 12% | 39 | 42,4 (+9%) | 105 | 118,1 (+12%) | 2,3 / 2,95 |
+| Cao – up-peak 12% | 42 | 46,1 (+10%) | 121 | 133,8 (+11%) | 2,2 / 2,76 |
+| Thấp – giờ trưa 11% | 34 | 60,4 (+78%) | 110 | 126,3 (+15%) | 3,6 / 2,67 |
+| Cao – giờ trưa 11% | 35 | 55,9 (+60%) | 123 | 131,0 (+7%) | 3,5 / 2,42 |
+
+- **PA 6 thang:** cả bốn trường hợp đều ùn tắc, cùng kết luận "không đạt" với Kone.
+- **Up-peak:** WT và DT lệch trong khoảng ±15%.
+- **Giờ trưa:** DT gần Kone, nhưng WT còn cao hơn 60–78%, tức kết quả nghiêng về an toàn. Đây là điểm cần cải thiện tiếp.
+- Cùng dữ liệu đó, chế độ tập hợp cho WT up-peak zone thấp 66 s (sức chở 100%) và 169 s (sức chở 80%).
+
 ### Bước 4 — Kết thúc và thống kê
 
 - Ngừng sinh khách sau `khởi động + thời gian đo`. Mô phỏng tiếp tục chạy cho đến khi chở hết người, tối đa thêm 1 giờ.

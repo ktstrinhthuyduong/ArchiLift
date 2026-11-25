@@ -23,6 +23,12 @@
     return 4 * Math.cbrt(d / (2 * j));
   };
 
+  /* Thang chữa cháy: thời gian chạy từ ga vào tới tầng xa nhất theo profile S (EN 81-72 / TCVN 6396-72:
+     tính từ lúc cửa đã đóng, ≤ 60 s). Thiếu a, j thì dùng giá trị mặc định của nhóm thang (1,0 m/s²; 1,5 m/s³). */
+  AL.fireRunTime = function (H, v, a, j) {
+    return AL.flightTime(+H, +v, +a > 0 ? +a : 1.0, +j > 0 ? +j : 1.5);
+  };
+
   /* Số người theo tải trọng: EN 81-20 / ISO 8100-1, Q/75 làm tròn xuống. */
   AL.capacityFromLoad = function (Q) {
     return Math.floor((+Q || 0) / 75 + 1e-9);
@@ -162,14 +168,29 @@
     if (+c.hc5 > 0) res.checks.push({ key: 'hc5', label: 'Năng lực vận chuyển HC5', unit: '% dân số', val: res.cap.hc5pct, target: +c.hc5, op: '≥', ok: res.cap.hc5pct >= +c.hc5 });
     if (+c.int > 0) res.checks.push({ key: 'int', label: 'Khoảng cách giữa các chuyến INT', unit: 's', val: res.cap.int, target: +c.int, op: '≤', ok: res.cap.int <= +c.int });
     if (res.dem) {
-      res.checks.push({ key: 'lf', label: 'Hệ số tải tại nhu cầu', unit: '%', val: res.dem.overload ? Infinity : res.dem.lf * 100, target: 80, op: '≤', ok: !res.dem.overload && res.dem.lf <= 0.8 });
+      res.checks.push({ key: 'lf', label: 'Hệ số tải tại nhu cầu', unit: '%', val: res.dem.overload ? Infinity : res.dem.lf * 100, target: lf * 100, op: '≤', ok: !res.dem.overload && res.dem.lf <= lf + 1e-9 });
       if (+c.awt > 0) res.checks.push({ key: 'awt', label: 'Thời gian chờ TB tại nhu cầu AWT', unit: 's', val: res.dem.overload ? Infinity : res.dem.awt, target: +c.awt, op: '≤', ok: !res.dem.overload && res.dem.awt <= +c.awt });
     }
     res.pass = res.checks.every(function (k) { return k.ok; });
     return res;
   };
 
-  /* Chọn thang tự động: duyệt số cabin × tải trọng × vận tốc, giữ phương án đạt mọi tiêu chí. */
+  /* Tổ hợp tải × vận tốc có trong kho dữ liệu hãng (liftdata.js): hàng kích thước (Q, vận tốc tối đa)
+     hoặc giới hạn dòng máy (tải ≤ qmax, vận tốc ≤ vmax). Không có kho thì trả null (không đánh giá). */
+  AL.inLibrary = function (Q, v) {
+    const lib = AL.LIFT_LIB;
+    if (!lib) return null;
+    return Object.keys(lib).some(function (brand) {
+      return (lib[brand] || []).some(function (m) {
+        if (m.limits && Q <= m.limits.qmax && v <= m.limits.vmax + 1e-9) return true;
+        return (m.rows || []).some(function (r) { return +r[1] === Q && +r[3] >= v - 1e-9; });
+      });
+    });
+  };
+
+  /* Chọn thang tự động: duyệt số cabin × tải trọng × vận tốc, giữ phương án đạt mọi tiêu chí.
+     Mỗi phương án được đánh dấu inLib (tổ hợp tải × vận tốc có trong kho hãng); phương án gọn nhất
+     theo từng số cabin ưu tiên tổ hợp có trong kho. */
   AL.size = function (gi, g, opt) {
     opt = opt || {};
     const loads = opt.loads || AL.LOADS, speeds = opt.speeds || AL.SPEEDS, maxL = opt.maxL || 12;
@@ -183,14 +204,15 @@
           if (opt.tMax > 0 && e.tExpress > opt.tMax) return;
           ok.push({ L: L, Q: Q, v: v, CC: e.CC, hc5pct: e.cap.hc5pct, int: e.cap.int, rtt: e.cap.rtt,
             awtDem: e.dem && !e.dem.overload ? e.dem.awt : null, lfDem: e.dem && !e.dem.overload ? e.dem.lf : null,
-            tExpress: e.tExpress });
+            tExpress: e.tExpress, inLib: AL.inLibrary(Q, v) });
         });
       });
     }
     ok.sort(function (a, b) { return a.L - b.L || a.Q - b.Q || a.v - b.v; });
     // phương án gọn nhất cho từng số cabin
     const perL = {};
-    ok.forEach(function (r) { if (!perL[r.L]) perL[r.L] = r; });
+    ok.forEach(function (r) { if (r.inLib !== false && !perL[r.L]) perL[r.L] = r; });
+    ok.forEach(function (r) { if (!perL[r.L]) perL[r.L] = r; });   // không có tổ hợp nào trong kho: lấy phương án gọn nhất
     return { all: ok, perL: Object.keys(perL).map(function (k) { return perL[k]; }) };
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1,0 +1,20 @@
+﻿ArchiLift – Tính toán giao thông thang máy (Archivina) – BẢN OFFLINE
+=====================================================================
+Không cần Internet, không cần Python, không cần cài đặt. Chạy trên Windows 10/11 có Edge hoặc Chrome.
+
+CÁCH DÙNG
+1. Giải nén cả thư mục ArchiLift_Offline vào ổ cứng (vd. D:\ArchiLift_Offline). Không chạy thẳng trong file .zip.
+2. Nháy đúp "ArchiLift.vbs" -> mở thành cửa sổ riêng như phần mềm.
+3. (Nên làm một lần) Nháy đúp "Tao loi tat ArchiLift.vbs" -> có biểu tượng ArchiLift trên Desktop và Start Menu.
+   Nếu sau này chuyển thư mục đi chỗ khác thì chạy lại file này.
+
+DỮ LIỆU
+- Dự án tự lưu trong trình duyệt CỦA MÁY NÀY. Máy khác không thấy, xoá dữ liệu trình duyệt là mất.
+- Muốn giữ hoặc chuyển dự án: bấm "Lưu .json" (lưu file hồ sơ), sang máy khác bấm "Mở .json".
+- Mang về văn phòng: mở file .json đó trên máy chủ ArchiLift (người đang có quyền sửa) để đưa lên dự án chung.
+
+KHÁC VỚI BẢN Ở VĂN PHÒNG
+- Không có chia sẻ trong mạng LAN (Xin sửa / chỉ xem) và không có nút Tắt: đóng cửa sổ là xong.
+- Các tính năng tính toán, mô phỏng, báo cáo, kích thước thang, nhập/xuất Excel (CSV) như nhau.
+
+Nếu Windows chặn file .vbs (một số máy công ty): mở thẳng app\index.html bằng Edge/Chrome.

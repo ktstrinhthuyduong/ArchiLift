@@ -3,9 +3,12 @@
 Ứng dụng web nội bộ chạy trên máy tính, **không cần Internet, không cần cài thư viện**.
 
 ## Chạy
-- Cách 1: nháy đúp `ArchiLift.bat` → trình duyệt mở `http://localhost:8765` (cần Python; tắt bằng cách đóng cửa sổ đen).
-- Cách 2: mở trực tiếp `app\index.html` bằng Chrome/Edge.
-- Dùng chung trong mạng LAN công ty: trong `ArchiLift.bat` đổi `--bind 127.0.0.1` thành `--bind 0.0.0.0`, máy khác truy cập `http://<IP-máy-chạy>:8765` (Windows Firewall sẽ hỏi cho phép).
+- Cách 1 (khuyên dùng): nháy đúp `ArchiLift.vbs` → trình duyệt mở `http://localhost:8765`, **không hiện cửa sổ đen** (cần Python). Tắt bằng nút **Tắt** trên thanh trên cùng. Dự án lưu vào `_shared\ArchiLift_chung.json`, chung với chế độ LAN.
+- Cách 2: mở trực tiếp `app\index.html` bằng Chrome/Edge (không cần Python).
+- Dùng chung trong mạng LAN công ty: nháy đúp `ArchiLift_LAN.vbs` trên máy làm chủ; thông báo hiện địa chỉ `http://<IP>:8765/index.html` cho máy khác (lần đầu Windows Firewall hỏi cho phép `pythonw`). Một người sửa ("Xin sửa"), người khác xem. Nút **Tắt** chỉ có ở máy làm chủ.
+- **Bản offline mang sang máy khác** (không cần Python, không cần Internet): `python Offline/DongGoi_Offline.py` → `ArchiLift_Offline_<ngày>.zip` (~80 KB). Máy nhận: giải nén, nháy đúp `ArchiLift.vbs` (cửa sổ riêng qua Edge/Chrome `--app`), `Tao loi tat ArchiLift.vbs` để có biểu tượng Desktop/Start Menu.
+- **Máy chủ luôn bật** (mọi người vào được cả khi máy KTS tắt): chép ArchiLift sang máy đó, chạy `MayChu\CaiDat_MayChu.bat` — xem [MayChu/HUONG_DAN_MAY_CHU.md](MayChu/HUONG_DAN_MAY_CHU.md).
+- `ArchiLift.bat` / `ArchiLift_LAN.bat` vẫn dùng được (có cửa sổ đen, đóng cửa sổ để tắt).
 
 Dữ liệu tự lưu trong trình duyệt của từng máy. Lưu hồ sơ dự án bằng **Lưu .json** (đặt vào `03_WORKING` của dự án), mở lại bằng **Mở .json**.
 
@@ -26,6 +29,7 @@ Tài liệu kỹ thuật (thuật toán, đầu vào/đầu ra, giới hạn): x
 - RTT khớp công thức CIBSE cổ điển (1 sảnh, tầng đều): S, H, RTT trùng đến 10⁻¹².
 - Mô phỏng cao điểm lên khi quá tải (12%, 8 giờ) cho HC5 thực ≈ 9,1%, so với 8,25% tính toán. Mô phỏng cao hơn vì chở đầy 100% số người định mức, còn công thức dùng hệ số tải 80%.
 - Đón lệnh gọi giữa đường: thời điểm "còn kịp hãm" khớp tích phân số của profile chữ S; mọi khách được trả đúng tầng.
+- DCS (gần đúng), so với báo cáo Kone 254 HQV, 8 thang, sức chở 80%: up-peak WT/DT lệch +9–12%; giờ trưa WT cao hơn 60–78% (nghiêng về an toàn). Chi tiết ở docs/03-mo-phong.md.
 
 ## Giới hạn (bản v1)
-Chưa có điều khiển đích đến (DCS), thang tầng kép, nhập trực tiếp file .xlsx (dùng dán từ Excel), lưu SQLite. Thông số cửa/gia tốc/jerk và tiêu chí mặc định là giá trị điển hình — cần xác nhận theo hãng và yêu cầu dự án. Kết quả để kiểm tra phương án nội bộ, cần đối chiếu báo cáo nhà thầu trước khi chốt.
+DCS mới mô phỏng gần đúng; chưa có thang tầng kép, nhập trực tiếp file .xlsx (dùng dán từ Excel), lưu SQLite. Thông số cửa/gia tốc/jerk và tiêu chí mặc định là giá trị điển hình — cần xác nhận theo hãng và yêu cầu dự án. Kết quả để kiểm tra phương án nội bộ, cần đối chiếu báo cáo nhà thầu trước khi chốt.
